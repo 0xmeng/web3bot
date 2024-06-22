@@ -11,7 +11,7 @@
 ### 安装
 
 ```bash 
-pip install -r requirement.txt
+pip install -r requirements.txt
 ```
 ## 如何使用
 
