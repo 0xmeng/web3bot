@@ -13,6 +13,13 @@
 ```bash 00000000
 pip install -r requirements.txt
 ```
+
+### 运行
+
+```bash 00000000
+sudo python joyid_bot.py
+```
+
 ## 如何使用
 
 1. 电脑上安装有chrome浏览器,运行钱推出所有已打开的谷歌浏览器,运行期间浏览器要置顶
