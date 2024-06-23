@@ -1,7 +1,14 @@
-# 浏览器安装地址
-CHROME_PATH = '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome'
-# 浏览器监听端口
-CHROME_PORT = '9223'
+#passkey授权密码
+AUTH_PASSWORD = '00000000'
+
+#ui 文本 当ui 文本不是简体中文时在这里配置自己的语言
+UI_TEXT = {
+    # 'button_daily_rewards': "Daily rewards", #领取页面切换每日奖励页签按钮文本
+    # 'title_reward1': 'Daily free reward', #奖励1的文本
+    # 'title_reward2': "Balance Reward",#奖励2的文本
+    # 'title_reward3': "Transaction reward",#奖励3的文本
+    # 'button_claim': "Claim" #领取按钮文本
+}
 
 #做交易奖励,只支持matic，改为False不做这个奖励，只做签到和余额奖励
 DO_TX = True
@@ -19,12 +26,8 @@ CUSTOM_SEND_NUMBER = 9.5321
 #钱包按顺序两两互转，最后不足两个钱包的一个地址不执行划转任务，
 ACCTS = [
     {
-      "acct": "Account#1111",
-      "evm_addr": "0x123123213123"
-    },
-    {
-        "acct": "Account#2222",
-        "evm_addr": "0x123123123123",
+      "acct": "Account#4287",
+      "evm_addr": "0x8abe1c05B8274144D7D0AEb50D43B7f2d527192c"
     }
 
 ]

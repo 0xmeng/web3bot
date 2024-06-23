@@ -2,6 +2,8 @@ import asyncio
 import os
 import json
 import traceback
+
+import requests
 from playwright.async_api import async_playwright
 import random
 import pyautogui
@@ -19,11 +21,11 @@ PAGE_MATIC_SEND = 'https://app.joy.id/send-evm-native/137'
 URL_TOKEN_PRICE = 'https://api.joy.id/api/v1/supported_token_prices'
 TIME_24HOUR = 60 * 60 * 24 * 1000
 KEY_TIME_FINISH = "finish_date"
-KEY_NAME_REWARD1 = "每日奖励"
-KEY_NAME_REWARD2 = "余额奖励"
-KEY_NAME_REWARD3 = "交易奖励"
+
 KEY_TX_SEND = "joyid.tx.send"
 KEY_TX_RECEIVE = "joyid.tx.receive"
+
+
 async def random_sleep(min_limit=0.3, max_limit=1.5):
     """异步随机 sleep
     :param min_limit: 最小值
@@ -34,7 +36,13 @@ async def random_sleep(min_limit=0.3, max_limit=1.5):
     print('sleep', delay)
     await asyncio.sleep(delay)
 
+
 class JOYIDAuto:
+    KEY_NAME_REWARD1 = "每日奖励"
+    KEY_NAME_REWARD2 = "余额奖励"
+    KEY_NAME_REWARD3 = "交易奖励"
+    TEXT_BUTTONT_REWARDS = '每日奖励'
+
     def __init__(self):
         self.loggers = {}
         self.schedulers = {}
@@ -45,7 +53,6 @@ class JOYIDAuto:
         self.accts = []
         self.matic_price = 0
         self.caches = {}
-
 
     def run(self):
 
@@ -64,6 +71,20 @@ class JOYIDAuto:
         #     self.loggers[worker_idx] = Logger('joyid', worker_idx, f'./log/{worker_idx}.log')
         #     file_path = f'./json/{worker_idx}.json'
         #     self.check_storage_file(file_path)
+        if config.UI_TEXT:
+            rewards_page_title = config.UI_TEXT.get('button_daily_rewards')
+            if rewards_page_title:
+                self.TEXT_BUTTONT_REWARDS = rewards_page_title
+            title_reward1 = config.UI_TEXT.get('title_reward1')
+            if title_reward1:
+                self.KEY_NAME_REWARD1 = title_reward1
+            title_reward2 = config.UI_TEXT.get('title_reward2')
+            if title_reward2:
+                self.KEY_NAME_REWARD2 = title_reward2
+            title_reward3 = config.UI_TEXT.get('title_reward3')
+            if title_reward3:
+                self.KEY_NAME_REWARD3 = title_reward3
+
         self.caches = self.check_storage_file(LOCAL_CACHE_PATH)
         self.accts = copy.deepcopy(config.ACCTS)
 
@@ -86,7 +107,7 @@ class JOYIDAuto:
         sleep_duration = time_left.total_seconds()
 
         # Sleep until the next midnight
-        print(f"休息 {sleep_duration/3600} 小时...")
+        print(f"休息 {sleep_duration / 3600} 小时...")
         # time.sleep(sleep_duration)
         await asyncio.sleep(sleep_duration)
 
@@ -128,13 +149,11 @@ class JOYIDAuto:
             with open(file_path, 'r') as f:
                 return json.load(f)
 
-
     def get_current_acct(self, acct_name):
         for acct in self.accts:
             if acct.get('acct') == acct_name:
                 self.current_acct = acct
                 return acct
-
 
     def check_acct_finish(self, acct_name):
         for acct in self.accts:
@@ -155,10 +174,13 @@ class JOYIDAuto:
     async def get_acct(self, page, account_text):
         acct = self.get_current_acct(account_text)
         if acct:
-            await page.get_by_text(account_text).first.click()
-            print(f"{account_text}开始任务")
-            await asyncio.sleep(6)
+            while page.url.startswith(PAGE_ACCTS):
+                print(f"点击账号名称 {account_text}")
+                await page.get_by_text(account_text).first.click()
+                print(f"{account_text}开始任务")
+                await asyncio.sleep(6)
             return acct
+
     async def select_acct(self, page, acct_name=None):
         await page.goto(url=PAGE_ACCTS, timeout=0)
         await asyncio.sleep(3)
@@ -195,40 +217,56 @@ class JOYIDAuto:
     async def goto_reward_page(self, page):
         await page.goto(url=PAGE_REWARD, timeout=0)
         await asyncio.sleep(5)
-        await page.get_by_text("每日奖励").first.click()
+        await page.get_by_text(self.TEXT_BUTTONT_REWARDS).first.click()
         await asyncio.sleep(5)
 
     async def __start_worker(self, worker_id):
 
-        chrome_path = f"{config.CHROME_PATH} --remote-debugging-port={config.CHROME_PORT}"
-        chrome_process = subprocess.Popen(chrome_path, shell=True)
+        # chrome_path = f"{config.CHROME_PATH} --remote-debugging-port={config.CHROME_PORT}"
+        # chrome_process = subprocess.Popen(chrome_path, shell=True)
+        # # 启动 Chrome 并指定调试端口
+        # user_home = os.path.expanduser('~')
+        # chrome_user_data_dir = os.path.join(user_home, 'Library', 'Application Support', 'Google', 'Chrome')
+        # chrome_command = [
+        #     config.CHROME_PATH,
+        #     # f'--user-data-dir={chrome_user_data_dir}',
+        #     f'--remote-debugging-port={config.CHROME_PORT}',
+        #     # '--no-sandbox',  # 可能需要添加这个参数
+        #     # '--disable-gpu'
+        # ]
+        # 启动 Chrome（如果还没有运行的话）
+        # subprocess.Popen([
+        #     '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        #     '--remote-debugging-port=9222',
+        #     '--user-data-dir=/Users/philar/Library/Application Support/Google/Chrome'
+        # ])
+        # await asyncio.sleep(10)
+        # while True:
+        #     try:
+        #         browser = await self.playwright.chromium.connect_over_cdp(f"http://127.0.0.1:{config.CHROME_PORT}")
+        #         new_context = browser.contexts[0]
+        #         page = new_context.pages[0]
+        #         break
+        #     except Exception as e:
+        #         print(e)
+        #     await asyncio.sleep(3)
+
+        user_data_dir = os.path.expanduser('~/Library/Application Support/Google/Chrome')
+        # # browser = await self.playwright.chromium.launch(
+        # #     channel="chrome",  # 使用系统安装的 Chrome
+        # #     headless=False,
+        # #     args=[f'--user-data-dir={user_data_dir}']
+        # # )
+        # # new_context = await browser.new_context()
+        # # page = await new_context.new_page()
         #
-        #
-        await asyncio.sleep(5)
-        browser = await self.playwright.chromium.connect_over_cdp(f"http://127.0.0.1:{config.CHROME_PORT}")
-        new_context = browser.contexts[0]
+
+        new_context = await self.playwright.chromium.launch_persistent_context(
+            user_data_dir=user_data_dir,
+            channel="chrome",
+            headless=False
+        )
         page = new_context.pages[0]
-
-
-        # browser = await self.playwright.chromium.launch()
-        # new_context = await browser.new_context()
-        # page = await new_context.new_page()
-
-        # user_data_dir = f'./userdata'
-        # new_context = await self.playwright.chromium.launch_persistent_context(
-        #     user_data_dir,
-        #     headless=False,
-        #     args=[
-        #         "--enable-experimental-web-platform-features",
-        #         # "--disable-web-security",
-        #         '--no-sandbox',
-        #         f"--unsafely-treat-insecure-origin-as-secure={PAGE_ACCTS}",
-        #
-        #     ],
-        # )
-        # page = await new_context.new_page()
-
-
 
         page.on("response", lambda res: self.__handle_res(res, page))
         #
@@ -253,16 +291,17 @@ class JOYIDAuto:
             self.check_all_finish()
             await asyncio.sleep(5)
 
-        print(f"----{self.current_acct.get('acct','')}完成所有任务-----")
+        print(f"----{self.current_acct.get('acct', '')}完成所有任务-----")
 
         # await self.__wait_input(page, worker_id)
 
     def check_all_finish(self):
         finish = False
-        if self.current_acct.get(KEY_NAME_REWARD1) and self.current_acct.get(KEY_NAME_REWARD2) and self.current_acct.get(KEY_NAME_REWARD3):
+        if self.current_acct.get(self.KEY_NAME_REWARD1) and self.current_acct.get(
+                self.KEY_NAME_REWARD2) and self.current_acct.get(self.KEY_NAME_REWARD3):
             finish = True
             self.current_acct['finished'] = finish
-        if self.current_acct.get(KEY_NAME_REWARD1):
+        if self.current_acct.get(self.KEY_NAME_REWARD1):
             acct_name = self.current_acct.get('acct')
             cache = self.caches.get(acct_name)
             if not cache:
@@ -275,7 +314,6 @@ class JOYIDAuto:
             with open(LOCAL_CACHE_PATH, 'w') as file:
                 json.dump(self.caches, file, indent=4)
         return finish
-
 
     async def check_tx_rewards(self, page):
         try:
@@ -321,7 +359,6 @@ class JOYIDAuto:
                         if current_idx is None:
                             print('>>>> 配置中找不到当前账号 %s' % self.current_acct.get("acct"))
                             return
-
 
                         target_acct = None
                         if current_idx % 2 == 0 and current_idx + 1 < acct_len:
@@ -402,7 +439,7 @@ class JOYIDAuto:
             dialog_location = pyautogui.locateOnScreen('./assets/auth_input.png', confidence=0.8)
             if dialog_location:
                 pyautogui.click(dialog_location)
-            pyautogui.write('00000000', interval=0.2)
+            pyautogui.write(config.AUTH_PASSWORD, interval=0.2)
             pyautogui.press('enter')  # Move to the next field
             await asyncio.sleep(5)
         except:
@@ -446,7 +483,7 @@ class JOYIDAuto:
                     await reward_button.click()
                     await asyncio.sleep(5)
                     await self.input_auth_pwd()
-                    print(f'{title} 尝试领取{retry+1}次')
+                    print(f'{title} 尝试领取{retry + 1}次')
                 else:
                     self.current_acct[title] = True
                     print(f'{title} 已经完成')
@@ -455,21 +492,20 @@ class JOYIDAuto:
                 await asyncio.sleep(2)
         except:
             print(f'{title} 不成功')
+
     async def check_rewards(self, page, is_tx):
         try:
-            if not self.current_acct.get(KEY_NAME_REWARD1) and not is_tx:
-                await self.do_reward(page, KEY_NAME_REWARD1)
+            if not self.current_acct.get(self.KEY_NAME_REWARD1) and not is_tx:
+                await self.do_reward(page, self.KEY_NAME_REWARD1)
                 print('---------')
-            if not self.current_acct.get(KEY_NAME_REWARD2):
-                await self.do_reward(page, KEY_NAME_REWARD2)
+            if not self.current_acct.get(self.KEY_NAME_REWARD2):
+                await self.do_reward(page, self.KEY_NAME_REWARD2)
                 print('---------')
-            if not self.current_acct.get(KEY_NAME_REWARD3):
-                await self.do_reward(page, KEY_NAME_REWARD3)
+            if not self.current_acct.get(self.KEY_NAME_REWARD3):
+                await self.do_reward(page, self.KEY_NAME_REWARD3)
 
         except Exception as e:
             print(e)
-
-
 
     async def wait_for_input(self):
         return await asyncio.get_event_loop().run_in_executor(
@@ -489,7 +525,6 @@ class JOYIDAuto:
                     states = await page.context.storage_state(path=f'json/{worker_idx}.json')
                     print(states)
 
-
                 await random_sleep(2, 3)
             except Exception as e:
                 print(e)
@@ -497,9 +532,7 @@ class JOYIDAuto:
     async def cleanup(self):
         await self.playwright.stop()
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     joyid = JOYIDAuto()
     joyid.run()
-
-
