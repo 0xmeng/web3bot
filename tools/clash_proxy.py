@@ -113,9 +113,9 @@ class ClashAPI:
         if SECRET:
             headers["Authorization"] = f"Bearer {SECRET}"
 
-        profile = PROFILES_DICT.get(self.name)
+        profile = PROFILES_DICT.get(group_name)
         if not profile:
-            print(f"找不到配置文件 {self.name}")
+            print(f"找不到配置文件 {group_name}")
             return False
 
         path = rf"{CONFIG_PATH}\{self.name}\profiles\{profile}"
