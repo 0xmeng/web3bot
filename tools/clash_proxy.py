@@ -129,10 +129,6 @@ class ClashAPI:
         else:
             print(f"切换 组: {group_name} Status: {response.status_code}, Response: {response.text}")
 
-    def check_name(proxy_name, proxies):
-        for proxy in proxies:
-            if proxy_name == proxy:
-                return True
 
 
 # Example usage
